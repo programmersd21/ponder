@@ -23,6 +23,8 @@ import {
   storeAccountSerperCredential,
   readAccountSerperCredential,
   removeAccountSerperCredential,
+  encryptSecret,
+  decryptSecret,
 } from './src/server/credentials.ts';
 import { MODEL_REGISTRY, streamExplanationFromGemini } from './src/server/gemini.ts';
 
@@ -56,6 +58,23 @@ const ExplainRequestSchema = z.object({
 const activeRequestsByClient = new Map<string, Set<string>>();
 const MAX_CONCURRENT_PER_CLIENT = 2;
 
+// Anonymous credentials are stored server-side keyed by a session id for local
+// development, and mirrored into an httpOnly cookie so they survive the
+// stateless, ephemeral serverless instances used on Vercel.
+const SESSION_COOKIE = 'ponder_session';
+const GEMINI_COOKIE = 'ponder_gemini';
+const SERPER_COOKIE = 'ponder_serper';
+const COOKIE_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
+
+function cookieOptions() {
+  return {
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: COOKIE_MAX_AGE,
+  };
+}
+
 function getClientKey(req: express.Request): string {
   const uidHeader = req.header('x-ponder-uid');
   if (uidHeader && /^[a-zA-Z0-9_-]{4,128}$/.test(uidHeader)) {
@@ -65,57 +84,84 @@ function getClientKey(req: express.Request): string {
   return `ip:${forwarded || req.ip || 'unknown'}`;
 }
 
-async function startServer() {
-
-  // We trust the Firebase ID token when present and fall back to a session
-  // cookie for anonymous users. Frontend-supplied UIDs are never trusted.
-  async function resolveIdentity(req: express.Request): Promise<{ uid: string | null; sessionId: string }> {
-    const authHeader = req.header('authorization');
-    if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) {
-      const token = authHeader.slice(7).trim();
-      const uid = await verifyFirebaseIdToken(token);
-      if (uid) return { uid, sessionId: '' };
-    }
-    let sessionId = req.cookies?.ponder_session as string | undefined;
-    if (!sessionId || !/^[a-f0-9]{48}$/.test(sessionId)) {
-      sessionId = generateSessionId();
-    }
-    return { uid: null, sessionId };
+// We trust the Firebase ID token when present and fall back to a session
+// cookie for anonymous users. Frontend-supplied UIDs are never trusted.
+async function resolveIdentity(req: express.Request): Promise<{ uid: string | null; sessionId: string }> {
+  const authHeader = req.header('authorization');
+  if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) {
+    const token = authHeader.slice(7).trim();
+    const uid = await verifyFirebaseIdToken(token);
+    if (uid) return { uid, sessionId: '' };
   }
+  let sessionId = req.cookies?.[SESSION_COOKIE] as string | undefined;
+  if (!sessionId || !/^[a-f0-9]{48}$/.test(sessionId)) {
+    sessionId = generateSessionId();
+  }
+  return { uid: null, sessionId };
+}
 
-  async function getCredential(req: express.Request): Promise<string | null> {
-    const { uid, sessionId } = await resolveIdentity(req);
-    if (uid) {
-      const acct = await readAccountCredential(uid);
-      if (acct) return acct;
-    } else {
-      const sess = readSessionCredential(sessionId);
-      if (sess) return sess;
-    }
-    const envKey = (process.env.GEMINI_API_KEY || '').trim();
-    if (envKey && envKey !== 'MY_GEMINI_API_KEY') return envKey;
+function readCookieCredential(req: express.Request, cookieName: string): string | null {
+  const raw = req.cookies?.[cookieName] as string | undefined;
+  if (!raw) return null;
+  try {
+    return decryptSecret(raw);
+  } catch {
     return null;
   }
+}
 
-  async function getSerperCredential(req: express.Request): Promise<string | null> {
-    const { uid, sessionId } = await resolveIdentity(req);
-    if (uid) {
-      const acct = await readAccountSerperCredential(uid);
-      if (acct) return acct;
-    } else {
-      const sess = readSessionSerperCredential(sessionId);
-      if (sess) return sess;
-    }
-    const envKey = (process.env.SERPER_API_KEY || '').trim();
-    if (envKey) return envKey;
-    return null;
+async function getCredential(req: express.Request): Promise<string | null> {
+  const { uid, sessionId } = await resolveIdentity(req);
+  if (uid) {
+    const acct = await readAccountCredential(uid);
+    if (acct) return acct;
+  } else {
+    const fromCookie = readCookieCredential(req, GEMINI_COOKIE);
+    if (fromCookie) return fromCookie;
+    const sess = readSessionCredential(sessionId);
+    if (sess) return sess;
   }
+  const envKey = (process.env.GEMINI_API_KEY || '').trim();
+  if (envKey && envKey !== 'MY_GEMINI_API_KEY') return envKey;
+  return null;
+}
 
+async function getSerperCredential(req: express.Request): Promise<string | null> {
+  const { uid, sessionId } = await resolveIdentity(req);
+  if (uid) {
+    const acct = await readAccountSerperCredential(uid);
+    if (acct) return acct;
+  } else {
+    const fromCookie = readCookieCredential(req, SERPER_COOKIE);
+    if (fromCookie) return fromCookie;
+    const sess = readSessionSerperCredential(sessionId);
+    if (sess) return sess;
+  }
+  const envKey = (process.env.SERPER_API_KEY || '').trim();
+  if (envKey) return envKey;
+  return null;
+}
+
+// Builds the Express application with all /api/* routes. Exported so it can be
+// mounted either by the long-running dev/prod server (startServer) or by a
+// Vercel serverless function (api/[...path].ts).
+export function createApp(): express.Express {
   const app = express();
-  const port = Number(process.env.PORT) || 3000;
 
   app.use(express.json({ limit: '64kb' }));
   app.use(cookieParser());
+
+  // On Vercel the catch-all function (api/[...path].ts) may receive the path
+  // with the /api prefix stripped. Restore it so the routes below match in
+  // both serverless and long-running deployments.
+  if (process.env.VERCEL) {
+    app.use((req, _res, next) => {
+      if (req.url && !req.url.startsWith('/api')) {
+        req.url = `/api${req.url}`;
+      }
+      next();
+    });
+  }
 
   app.get('/api/health', (_req, res) => {
     res.json({
@@ -126,20 +172,19 @@ async function startServer() {
     });
   });
 
-
   app.get('/api/gemini/status', async (req, res) => {
     const { uid, sessionId } = await resolveIdentity(req);
-    const stored = uid ? await readAccountCredential(uid) : readSessionCredential(sessionId);
+    let stored: string | null = null;
+    if (uid) {
+      stored = await readAccountCredential(uid);
+    } else {
+      stored = readCookieCredential(req, GEMINI_COOKIE) || readSessionCredential(sessionId);
+    }
     const envKey = (process.env.GEMINI_API_KEY || '').trim();
     const key = stored || (envKey && envKey !== 'MY_GEMINI_API_KEY' ? envKey : null);
     // Ensure session cookie is set for anonymous users
     if (!uid && sessionId) {
-      res.cookie('ponder_session', sessionId, {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-      });
+      res.cookie(SESSION_COOKIE, sessionId, cookieOptions());
     }
     res.json({ configured: Boolean(key), accountStorage: isAccountStorageAvailable(), signedIn: Boolean(uid) });
   });
@@ -167,12 +212,8 @@ async function startServer() {
     } else {
       const { sessionId } = await resolveIdentity(req);
       storeSessionCredential(sessionId, apiKey);
-      res.cookie('ponder_session', sessionId, {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-      });
+      res.cookie(SESSION_COOKIE, sessionId, cookieOptions());
+      res.cookie(GEMINI_COOKIE, encryptSecret(apiKey), cookieOptions());
     }
     res.json({ ok: true, valid: true, message: validation.message, persisted: Boolean(uid) });
   });
@@ -189,6 +230,7 @@ async function startServer() {
       const { sessionId } = await resolveIdentity(req);
       removeSessionCredential(sessionId);
     }
+    res.clearCookie(GEMINI_COOKIE, cookieOptions());
     res.json({ ok: true });
   });
 
@@ -206,13 +248,17 @@ async function startServer() {
     res.json({ ok: true, valid: true, message: validation.message });
   });
 
-
   app.get('/api/serper/status', async (req, res) => {
     const { uid, sessionId } = await resolveIdentity(req);
-    const key = uid ? await readAccountSerperCredential(uid) : readSessionSerperCredential(sessionId);
+    let key: string | null = null;
+    if (uid) {
+      key = await readAccountSerperCredential(uid);
+    } else {
+      key = readCookieCredential(req, SERPER_COOKIE) || readSessionSerperCredential(sessionId);
+    }
     const envKey = (process.env.SERPER_API_KEY || '').trim();
     if (!uid && sessionId) {
-      res.cookie('ponder_session', sessionId, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 30 * 24 * 60 * 60 * 1000 });
+      res.cookie(SESSION_COOKIE, sessionId, cookieOptions());
     }
     res.json({ configured: Boolean(key || envKey) });
   });
@@ -234,7 +280,8 @@ async function startServer() {
     } else {
       const { sessionId } = await resolveIdentity(req);
       storeSessionSerperCredential(sessionId, parsed.data.apiKey);
-      res.cookie('ponder_session', sessionId, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 30 * 24 * 60 * 60 * 1000 });
+      res.cookie(SESSION_COOKIE, sessionId, cookieOptions());
+      res.cookie(SERPER_COOKIE, encryptSecret(parsed.data.apiKey), cookieOptions());
     }
     res.json({ ok: true, valid: true, message: validation.message });
   });
@@ -247,6 +294,7 @@ async function startServer() {
     if (idToken) uid = await verifyFirebaseIdToken(idToken);
     if (uid) await removeAccountSerperCredential(uid);
     else { const { sessionId } = await resolveIdentity(req); removeSessionSerperCredential(sessionId); }
+    res.clearCookie(SERPER_COOKIE, cookieOptions());
     res.json({ ok: true });
   });
 
@@ -379,6 +427,12 @@ async function startServer() {
     }
   });
 
+  return app;
+}
+
+async function startServer() {
+  const app = createApp();
+  const port = Number(process.env.PORT) || 3000;
   const isProd = process.env.NODE_ENV === 'production';
 
   if (!isProd) {
@@ -401,7 +455,10 @@ async function startServer() {
   });
 }
 
-startServer().catch((err) => {
-  console.error('Failed to start ponder server:', err);
-  process.exit(1);
-});
+const isDirectRun = Boolean(process.argv[1]) && path.resolve(process.argv[1]) === __filename;
+if (isDirectRun) {
+  startServer().catch((err) => {
+    console.error('Failed to start ponder server:', err);
+    process.exit(1);
+  });
+}
