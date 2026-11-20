@@ -151,18 +151,6 @@ export function createApp(): express.Express {
   app.use(express.json({ limit: '64kb' }));
   app.use(cookieParser());
 
-  // On Vercel the catch-all function (api/[...path].ts) may receive the path
-  // with the /api prefix stripped. Restore it so the routes below match in
-  // both serverless and long-running deployments.
-  if (process.env.VERCEL) {
-    app.use((req, _res, next) => {
-      if (req.url && !req.url.startsWith('/api')) {
-        req.url = `/api${req.url}`;
-      }
-      next();
-    });
-  }
-
   app.get('/api/health', (_req, res) => {
     res.json({
       ok: true,
