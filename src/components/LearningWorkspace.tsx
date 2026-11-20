@@ -646,7 +646,7 @@ export function LearningWorkspace({
               {loadingThreadTurns && turns.length === 0 && !streaming && (
                 <div className="mx-auto flex max-w-[768px] items-center gap-3 py-10 text-sm text-[var(--muted-foreground)]">
                   <PonderLogo size={20} spinning />
-                  <span>Loading exploration from your workspace…</span>
+                  <span>loading exploration from your workspace…</span>
                 </div>
               )}
 
@@ -740,7 +740,7 @@ export function LearningWorkspace({
                         </h2>
                         <span className="inline-flex items-center gap-1 text-[11.5px] text-[var(--muted-foreground)]">
                           <Lock className="h-3 w-3" aria-hidden="true" />
-                          <span>Excluded from public shares</span>
+                          <span>excluded from public shares</span>
                         </span>
                       </div>
                       <button
@@ -846,7 +846,7 @@ export function LearningWorkspace({
                         className="inline-flex min-h-[30px] items-center gap-1.5 rounded-[7px] border border-[var(--border)] bg-[var(--surface)] px-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface-tertiary)] cursor-pointer shrink-0"
                       >
                         <Square className="h-3 w-3" aria-hidden="true" />
-                        <span>Cancel</span>
+                        <span>cancel</span>
                       </button>
                     </div>
 
@@ -917,7 +917,7 @@ export function LearningWorkspace({
                           className="inline-flex min-h-[38px] items-center gap-1.5 rounded-[8px] border border-[var(--border)] bg-[var(--surface-secondary)] px-3 text-[13px] font-medium text-[var(--foreground)] hover:bg-[var(--surface-tertiary)] cursor-pointer"
                         >
                           <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-                          <span>Retry</span>
+                          <span>retry</span>
                         </button>
                       )}
                       <button

@@ -99,9 +99,9 @@ export function GeminiSettings({ open, onClose, idToken, onStatusChange }: Gemin
         <div className="mt-4 space-y-4">
           <div className="rounded-[11px] border border-[var(--border)] bg-[var(--surface-secondary)] px-4 py-3 text-[13px]">
             <div className="flex items-center justify-between">
-              <span className="text-[var(--muted-foreground)]">Status</span>
+              <span className="text-[var(--muted-foreground)]">status</span>
               <span className={`font-medium ${status?.configured ? 'text-[var(--success)]' : 'text-[var(--destructive)]'}`}>
-                {status?.configured ? 'Connected' : 'Not connected'}
+                {status?.configured ? 'connected' : 'not connected'}
               </span>
             </div>
             {status?.signedIn && (
@@ -119,7 +119,7 @@ export function GeminiSettings({ open, onClose, idToken, onStatusChange }: Gemin
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => void handleTest()} disabled={testing || !status?.configured} className="inline-flex min-h-[36px] items-center gap-1.5 rounded-[8px] border border-[var(--border)] bg-[var(--surface)] px-3 text-[12.5px] font-medium text-[var(--foreground)] hover:bg-[var(--surface-secondary)] disabled:opacity-50 cursor-pointer">
               {testing ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Check className="h-3.5 w-3.5" aria-hidden="true" />}
-              <span>Test connection</span>
+              <span>test connection</span>
             </button>
             <button type="button" onClick={() => setReplaceMode((v) => !v)} className="inline-flex min-h-[36px] items-center gap-1.5 rounded-[8px] border border-[var(--border)] bg-[var(--surface)] px-3 text-[12.5px] font-medium text-[var(--foreground)] hover:bg-[var(--surface-secondary)] cursor-pointer">
               <Settings className="h-3.5 w-3.5" aria-hidden="true" />
@@ -127,16 +127,16 @@ export function GeminiSettings({ open, onClose, idToken, onStatusChange }: Gemin
             </button>
             <button type="button" onClick={() => void handleRemove()} disabled={removing || !status?.configured} className="inline-flex min-h-[36px] items-center gap-1.5 rounded-[8px] border border-[var(--border)] bg-[var(--surface)] px-3 text-[12.5px] font-medium text-[var(--destructive)] hover:bg-[var(--surface-secondary)] disabled:opacity-50 cursor-pointer">
               {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />}
-              <span>Remove</span>
+              <span>remove</span>
             </button>
           </div>
 
 
           <div className="space-y-2 border-t border-[var(--border)] pt-3">
             <div className="flex items-center justify-between">
-              <div className="text-[12.5px] font-medium text-[var(--muted-foreground)]">Serper</div>
+              <div className="text-[12.5px] font-medium text-[var(--muted-foreground)]">serper</div>
               <span className={`text-[12px] font-medium ${serperStatus?.configured ? 'text-[var(--success)]' : 'text-[var(--destructive)]'}`}>
-                {serperStatus?.configured ? 'Connected' : 'Not connected'}
+                {serperStatus?.configured ? 'connected' : 'not connected'}
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -238,7 +238,7 @@ export function GeminiSettings({ open, onClose, idToken, onStatusChange }: Gemin
                   className="inline-flex min-h-[34px] items-center gap-1.5 rounded-[8px] bg-[var(--primary)] px-3 text-[12.5px] font-medium text-[var(--primary-foreground)] disabled:opacity-50 cursor-pointer"
                 >
                   {replacing ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}
-                  <span>Connect</span>
+                  <span>connect</span>
                 </button>
                 <button type="button" onClick={() => setReplaceMode(false)} className="inline-flex min-h-[34px] items-center rounded-[8px] border border-[var(--border)] bg-[var(--surface)] px-3 text-[12.5px] font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer">
                   Cancel
@@ -250,7 +250,7 @@ export function GeminiSettings({ open, onClose, idToken, onStatusChange }: Gemin
           )}
 
           <div className="space-y-2 border-t border-[var(--border)] pt-3">
-            <div className="text-[12.5px] font-medium text-[var(--muted-foreground)]">Model</div>
+            <div className="text-[12.5px] font-medium text-[var(--muted-foreground)]">model</div>
             <div className="grid grid-cols-1 gap-1.5">
               {[
                 'gemini-4-hydrogen',

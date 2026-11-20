@@ -118,7 +118,7 @@ export function GeminiSetup({ idToken, onConfigured }: GeminiSetupProps) {
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label htmlFor="serper-key" className="text-[13px] font-medium text-[var(--muted-foreground)]">Serper API key</label>
+              <label htmlFor="serper-key" className="text-[13px] font-medium text-[var(--muted-foreground)]">serper api key</label>
               <a href="https://serper.dev/" target="_blank" rel="noopener noreferrer" className="text-[12px] font-medium text-[var(--accent)] hover:underline">get a serper key</a>
             </div>
             <div className="flex items-center gap-2 rounded-[12px] border border-[var(--border-strong)] bg-[var(--surface)] px-3 py-2 focus-within:border-[var(--ring)]">
@@ -148,10 +148,10 @@ export function GeminiSetup({ idToken, onConfigured }: GeminiSetupProps) {
             {status === 'validating' ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                <span>Connecting...</span>
+                <span>connecting…</span>
               </>
             ) : (
-              <span>Connect</span>
+              <span>connect</span>
             )}
           </button>
 

@@ -340,58 +340,73 @@ export function ExplanationCard({
                 }}
                 aria-expanded={exportMenuOpen}
                 aria-haspopup="menu"
-                title="export and share options"
-                className={`inline-flex min-h-[34px] items-center gap-1.5 rounded-[8px] border px-2.5 text-[12.5px] font-medium transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+                title="export & share"
+                className={`group inline-flex min-h-[34px] items-center gap-1.5 rounded-[8px] border px-2.5 text-[12.5px] font-medium transition-all whitespace-nowrap shrink-0 cursor-pointer ${
                   exportMenuOpen
                     ? 'border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent)]'
-                    : 'border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-secondary)]'
+                    : 'border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-secondary)]'
                 }`}
               >
-                <MoreHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
+                <MoreHorizontal className="h-3.5 w-3.5 transition-transform duration-200 group-hover:rotate-90" aria-hidden="true" />
                 <span>export</span>
-                <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${exportMenuOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                <ChevronDown className={`h-3 w-3 opacity-60 transition-transform duration-200 ${exportMenuOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
               </button>
 
               <AnimatePresence>
                 {exportMenuOpen && (
                   <motion.div
-                    initial={{ opacity: 0, y: 4, scale: 0.97 }}
+                    initial={{ opacity: 0, y: 6, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 2, scale: 0.98 }}
-                    transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                    exit={{ opacity: 0, y: 3, scale: 0.98 }}
+                    transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
                     role="menu"
                     aria-label="export and share"
-                    className="absolute right-0 top-full z-30 mt-1.5 w-52 overflow-hidden rounded-[11px] border border-[var(--border)] bg-[var(--surface-elevated)] p-1 shadow-[var(--shadow-elevated)]"
+                    className="absolute right-0 top-full z-30 mt-2 w-[228px] origin-top-right overflow-hidden rounded-[12px] border border-[var(--border)] bg-[var(--surface-elevated)] p-1.5 shadow-[var(--shadow-elevated)]"
                   >
+                    <div className="px-2.5 pb-1.5 pt-1 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--subtle-foreground)]">
+                      take it with you
+                    </div>
                     <button
                       type="button"
                       role="menuitem"
                       onClick={() => { closeExportMenu(); void handleCopyExplanation(); }}
-                      className="flex w-full items-center gap-2 rounded-[7px] px-2.5 py-2 text-left text-[12.5px] font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--surface-secondary)] cursor-pointer"
+                      className="group flex w-full items-center gap-2.5 rounded-[7px] px-2.5 py-2 text-left text-[12.5px] font-medium text-[var(--foreground)] transition-all hover:bg-[var(--accent-subtle)] hover:text-[var(--accent)] cursor-pointer"
                     >
-                      {copiedText ? <Check className="h-3.5 w-3.5 text-[var(--success)]" /> : <Copy className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />}
-                      <span>{copiedText ? 'Copied!' : 'Copy text'}</span>
+                      <span className="flex h-6 w-6 items-center justify-center rounded-[6px] bg-[var(--surface-secondary)] transition-colors group-hover:bg-[var(--surface)]">
+                        {copiedText ? <Check className="h-3.5 w-3.5 text-[var(--success)]" /> : <Copy className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />}
+                      </span>
+                      <span className="flex-1">{copiedText ? 'copied ✓' : 'copy text'}</span>
+                      <span className="font-mono text-[10px] text-[var(--subtle-foreground)]">⌘c</span>
                     </button>
                     <button
                       type="button"
                       role="menuitem"
                       onClick={() => { closeExportMenu(); handlePdfDownload(); }}
-                      className="flex w-full items-center gap-2 rounded-[7px] px-2.5 py-2 text-left text-[12.5px] font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--surface-secondary)] cursor-pointer"
+                      className="group flex w-full items-center gap-2.5 rounded-[7px] px-2.5 py-2 text-left text-[12.5px] font-medium text-[var(--foreground)] transition-all hover:bg-[var(--accent-subtle)] hover:text-[var(--accent)] cursor-pointer"
                     >
-                      <FileDown className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
-                      <span>Download PDF</span>
+                      <span className="flex h-6 w-6 items-center justify-center rounded-[6px] bg-[var(--surface-secondary)] transition-colors group-hover:bg-[var(--surface)]">
+                        <FileDown className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
+                      </span>
+                      <span className="flex-1">save as pdf</span>
+                      <span className="font-mono text-[10px] text-[var(--subtle-foreground)]">↧</span>
                     </button>
                     {!readOnly && onShareTurn && (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        disabled={shareStatus === 'sharing'}
-                        onClick={() => { closeExportMenu(); void onShareTurn(turn); }}
-                        className="flex w-full items-center gap-2 rounded-[7px] px-2.5 py-2 text-left text-[12.5px] font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--surface-secondary)] cursor-pointer disabled:opacity-50"
-                      >
-                        {shareStatus === 'copied' ? <Check className="h-3.5 w-3.5 text-[var(--success)]" /> : <Share2 className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />}
-                        <span>{shareStatus === 'copied' ? 'Link copied' : shareStatus === 'sharing' ? 'Sharing…' : 'Share link'}</span>
-                      </button>
+                      <>
+                        <div className="my-1 h-px bg-[var(--border)]" />
+                        <button
+                          type="button"
+                          role="menuitem"
+                          disabled={shareStatus === 'sharing'}
+                          onClick={() => { closeExportMenu(); void onShareTurn(turn); }}
+                          className="group flex w-full items-center gap-2.5 rounded-[7px] px-2.5 py-2 text-left text-[12.5px] font-medium text-[var(--foreground)] transition-all hover:bg-[var(--accent-subtle)] hover:text-[var(--accent)] cursor-pointer disabled:opacity-50"
+                        >
+                          <span className="flex h-6 w-6 items-center justify-center rounded-[6px] bg-[var(--surface-secondary)] transition-colors group-hover:bg-[var(--surface)]">
+                            {shareStatus === 'copied' ? <Check className="h-3.5 w-3.5 text-[var(--success)]" /> : <Share2 className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />}
+                          </span>
+                          <span className="flex-1">{shareStatus === 'copied' ? 'link copied ✓' : shareStatus === 'sharing' ? 'sharing…' : 'share a link'}</span>
+                          <span className="font-mono text-[10px] text-[var(--subtle-foreground)]">↗</span>
+                        </button>
+                      </>
                     )}
                   </motion.div>
                 )}
@@ -456,7 +471,7 @@ export function ExplanationCard({
                     className="inline-flex min-h-[28px] items-center gap-1 rounded-[7px] border border-[var(--border)] bg-[var(--surface)] px-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface-tertiary)] cursor-pointer"
                   >
                     <Square className="h-3 w-3" aria-hidden="true" />
-                    <span>Stop</span>
+                    <span>stop</span>
                   </button>
                 </div>
               </motion.div>
@@ -473,7 +488,7 @@ export function ExplanationCard({
           {manualCopyText && (
             <div className="space-y-2 rounded-[11px] border border-[var(--border)] bg-[var(--surface-secondary)] p-3">
               <div className="flex items-center justify-between text-[12px] text-[var(--muted-foreground)]">
-                <span>Clipboard access restricted , copy manually below:</span>
+                <span>clipboard access restricted — copy manually below:</span>
                 <button
                   type="button"
                   onClick={() => setManualCopyText(null)}
@@ -554,7 +569,7 @@ export function ExplanationCard({
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-[12px] font-medium text-[var(--accent)] hover:underline shrink-0"
                 >
-                  <span>Source</span>
+                  <span>source</span>
                   <ExternalLink className="h-3 w-3" aria-hidden="true" />
                 </a>
               )}
@@ -705,7 +720,7 @@ export function ExplanationCard({
                             <span>{opt}</span>
                             {hasChosen && isRightOption && (
                               <span className="font-mono text-[11px] font-medium text-[var(--success)] shrink-0">
-                                Correct
+                                correct
                               </span>
                             )}
                           </button>
@@ -715,7 +730,7 @@ export function ExplanationCard({
                     {hasChosen && (
                       <p className="text-[13px] leading-relaxed text-[var(--muted-foreground)] pt-0.5">
                         <span className="font-medium text-[var(--foreground)]">
-                          {isCorrect ? 'Right , ' : 'Not quite , '}
+                          {isCorrect ? 'right — ' : 'not quite — '}
                         </span>
                         {chk.explanation}
                       </p>

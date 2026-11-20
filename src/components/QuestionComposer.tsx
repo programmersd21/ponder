@@ -148,7 +148,7 @@ export function QuestionComposer({
               >
                 <span className="inline-flex items-center gap-1 pl-2 pr-0.5 text-[11px] font-medium text-[var(--muted-foreground)]">
                   <Globe className="h-3 w-3" aria-hidden="true" />
-                  <span className="hidden sm:inline">Web</span>
+                  <span className="hidden sm:inline">web</span>
                 </span>
                 {RESEARCH_OPTIONS.map((opt) => {
                   const active = researchMode === opt.id;
@@ -195,7 +195,7 @@ export function QuestionComposer({
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                <span>Thinking…</span>
+                <span>thinking…</span>
               </>
             ) : (
               <>

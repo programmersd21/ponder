@@ -99,7 +99,7 @@ export function SoundPreferencesPopover({ prefs, onChange }: SoundPreferencesPop
                     : 'border-[var(--border-strong)] bg-[var(--surface-secondary)]'
                 }`}
               >
-                <span className="sr-only">Toggle sound effects</span>
+                <span className="sr-only">toggle sound effects</span>
                 <span
                   className={`inline-block h-5 w-5 rounded-full bg-[var(--surface-elevated)] shadow-sm transition-transform duration-150 ${
                     prefs.enabled ? 'translate-x-6' : 'translate-x-1'
