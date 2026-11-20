@@ -1,5 +1,7 @@
 # ponder
 
+![demo](demo.png)
+
 interactive concept learning application. ask a question and ponder pairs a clear explanation with an interactive model.
 
 ## features
