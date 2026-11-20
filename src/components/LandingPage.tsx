@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import { ArrowRight } from 'lucide-react';
+import { Atmosphere } from './Atmosphere.tsx';
+import { MeshDriftBackground } from './ui/mesh-drift-shader.tsx';
 import {
   ENGINE_SHOWCASE_DEMOS,
   EXAMPLE_QUESTIONS,
@@ -42,10 +45,24 @@ export function LandingPage({
   return (
     <main id="top" className="bg-[var(--background)] text-[var(--foreground)]">
       {/* 1. Hero & Live Product Demonstration */}
-      <section className="mx-auto flex min-h-[calc(100dvh-56px)] max-w-[1160px] flex-col justify-center px-4 py-6 sm:px-6 sm:py-10 lg:px-8 lg:py-8">
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-center lg:gap-10">
+      <section className="relative isolate mx-auto flex min-h-[calc(100dvh-56px)] max-w-[1160px] flex-col justify-center overflow-hidden px-4 py-6 sm:px-6 sm:py-10 lg:px-8 lg:py-8">
+        {/* CSS fallback (also the reduced-motion background) */}
+        <Atmosphere variant="hero" />
+        {/* Live WebGL mesh gradient, masked to fade into the ivory surface */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-0 opacity-[0.55] [mask-image:radial-gradient(ellipse_at_50%_35%,black_5%,transparent_82%)]"
+        >
+          <MeshDriftBackground className="h-full w-full" />
+        </div>
+        <div className="relative z-10 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-center lg:gap-10">
           {/* Editorial Proposition */}
-          <div className="lg:col-span-5 space-y-5">
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+            className="lg:col-span-5 space-y-5"
+          >
             <h1 className="font-display text-[clamp(2.25rem,4vw,3.25rem)] font-semibold tracking-tight leading-[1.08] text-[var(--foreground)]">
               <TypingText text="understand anything, a little deeper." duration={80} />
             </h1>
@@ -71,10 +88,15 @@ export function LandingPage({
                 see how it works
               </a>
             </div>
-          </div>
+          </motion.div>
 
           {/* Live Product Demonstration */}
-          <div className="lg:col-span-7">
+          <motion.div
+            initial={{ opacity: 0, y: 18, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.6, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
+            className="lg:col-span-7"
+          >
             <div className="rounded-[18px] border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
               <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2 border-b border-[var(--border)] pb-3">
                 <div>
@@ -101,7 +123,7 @@ export function LandingPage({
 
               <VisualisationRenderer key={heroDemo.id} spec={heroDemo.spec} />
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -122,11 +144,16 @@ export function LandingPage({
             </div>
 
             <div className="lg:col-span-7 divide-y divide-[var(--border)] border-y border-[var(--border)]">
-              {EXAMPLE_QUESTIONS.slice(0, 5).map((item) => (
-                <button
+              {EXAMPLE_QUESTIONS.slice(0, 5).map((item, qIdx) => (
+                <motion.button
                   key={item.question}
                   type="button"
                   onClick={() => onStartExploring(item.question)}
+                  initial={{ opacity: 0, x: 14 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.35, delay: qIdx * 0.06, ease: [0.16, 1, 0.3, 1] }}
+                  whileHover={{ x: 4 }}
                   className="group flex w-full items-center justify-between gap-4 py-4 px-2 text-left transition-colors duration-150 hover:bg-[var(--surface-secondary)] cursor-pointer"
                 >
                   <div className="min-w-0">
@@ -143,7 +170,7 @@ export function LandingPage({
                     className="h-4 w-4 shrink-0 text-[var(--subtle-foreground)] transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-[var(--accent)]"
                     aria-hidden="true"
                   />
-                </button>
+                </motion.button>
               ))}
             </div>
           </div>

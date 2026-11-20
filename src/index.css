@@ -507,3 +507,98 @@ button:focus-visible, [role='button']:focus-visible, a:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---- Atmospheric ambient background (shadcn-inspired, warm editorial) ---- */
+.ponder-atmosphere {
+  --pointer-x: 50%;
+  --pointer-y: 40%;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  isolation: isolate;
+  border-radius: inherit;
+}
+.ponder-atmosphere--page {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.4;
+}
+
+.ponder-atmo-blob,
+.ponder-atmo-pointer {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* Warm stone, clay, and muted olive — stays "grayboxy", never purple/blue. */
+.ponder-atmo-blob--a {
+  width: 46%;
+  height: 46%;
+  left: 4%;
+  top: 6%;
+  background: radial-gradient(circle, var(--atmo-a, rgba(254, 128, 25, 0.42)) 0%, transparent 70%);
+  animation: atmo-drift-a 22s ease-in-out infinite alternate;
+}
+.ponder-atmo-blob--b {
+  width: 40%;
+  height: 40%;
+  right: 6%;
+  top: 18%;
+  background: radial-gradient(circle, var(--atmo-b, rgba(250, 189, 47, 0.4)) 0%, transparent 70%);
+  animation: atmo-drift-b 27s ease-in-out infinite alternate;
+}
+.ponder-atmo-blob--c {
+  width: 38%;
+  height: 38%;
+  left: 28%;
+  bottom: 2%;
+  background: radial-gradient(circle, var(--atmo-c, rgba(235, 219, 178, 0.6)) 0%, transparent 70%);
+  animation: atmo-drift-c 31s ease-in-out infinite alternate;
+}
+.ponder-atmo-pointer {
+  width: 26%;
+  height: 26%;
+  left: var(--pointer-x);
+  top: var(--pointer-y);
+  margin: -13% 0 0 -13%;
+  background: radial-gradient(circle, var(--atmo-pointer, rgba(254, 128, 25, 0.26)) 0%, transparent 70%);
+  filter: blur(50px);
+  transition: opacity 400ms ease;
+}
+
+/* Fine film grain, like the shadcn.io backgrounds, but very subtle. */
+.ponder-atmo-grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.22;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.32'/%3E%3C/svg%3E");
+}
+:root.dark .ponder-atmo-grain { mix-blend-mode: screen; opacity: 0.12; }
+
+@keyframes atmo-drift-a {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(9%, 8%, 0) scale(1.12); }
+  100% { transform: translate3d(-5%, 12%, 0) scale(1.05); }
+}
+@keyframes atmo-drift-b {
+  0% { transform: translate3d(0, 0, 0) scale(1.05); }
+  50% { transform: translate3d(-11%, 6%, 0) scale(1); }
+  100% { transform: translate3d(4%, -8%, 0) scale(1.15); }
+}
+@keyframes atmo-drift-c {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(7%, -10%, 0) scale(1.1); }
+  100% { transform: translate3d(-8%, -4%, 0) scale(1.02); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ponder-atmo-blob { animation: none !important; }
+  .ponder-atmo-pointer { display: none; }
+}

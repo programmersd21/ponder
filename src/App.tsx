@@ -3,6 +3,7 @@ import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { AppHeader, type AppView } from './components/AppHeader.tsx';
+import { Atmosphere } from './components/Atmosphere.tsx';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal.tsx';
 import { LandingPage } from './components/LandingPage.tsx';
 import { LearningWorkspace } from './components/LearningWorkspace.tsx';
@@ -685,7 +686,8 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="min-h-dvh bg-[var(--background)] text-[var(--foreground)]">
+      <div className="relative min-h-dvh bg-[var(--background)] text-[var(--foreground)]">
+        <Atmosphere variant="page" />
         {!focusMode && (
           <AppHeader
             view={view}
@@ -707,14 +709,14 @@ export default function App() {
 
         <AnimatePresence mode="wait">
           {view === 'share' && shareId ? (
-            <motion.div key="share" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
+            <motion.div key="share" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2, ease: 'easeOut' }} className="relative z-10">
               <ShareView
                 shareId={shareId}
                 onExitShare={() => handleNavigateView('workspace')}
               />
             </motion.div>
           ) : view === 'landing' ? (
-            <motion.div key="landing" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
+            <motion.div key="landing" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2, ease: 'easeOut' }} className="relative z-10">
               <LandingPage
                 onStartExploring={handleStartExploring}
                 onOpenMoonDemo={handleOpenMoonDemo}
@@ -722,7 +724,7 @@ export default function App() {
               />
             </motion.div>
           ) : (
-            <motion.div key="workspace" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
+            <motion.div key="workspace" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2, ease: 'easeOut' }} className="relative z-10">
               <LearningWorkspace
             threads={threads}
             savedItems={savedItems}
