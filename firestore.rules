@@ -1,0 +1,320 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Shared Hardened Primitives ---
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isVerifiedOwner(uid) {
+      return isVerifiedUser() && request.auth.uid == uid;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidShareId(id) {
+      return id is string && id.size() >= 16 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidDepth(depth) {
+      return depth is string && depth.size() <= 16 && (depth == 'quick' || depth == 'standard' || depth == 'deep');
+    }
+
+    // --- Entity Validation Helpers ---
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'theme', 'preferredDepth', 'soundEnabled', 'soundVolume', 'soundIntensity', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'theme', 'preferredDepth', 'soundEnabled', 'soundVolume', 'soundIntensity', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.uid == userId
+        && data.uid == request.auth.uid
+        && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 80))
+        && data.theme is string && data.theme.size() <= 10 && (data.theme == 'light' || data.theme == 'dark')
+        && isValidDepth(data.preferredDepth)
+        && data.soundEnabled is bool
+        && data.soundVolume is number && data.soundVolume >= 0 && data.soundVolume <= 1
+        && data.soundIntensity is string && data.soundIntensity.size() <= 16 && (data.soundIntensity == 'subtle' || data.soundIntensity == 'balanced')
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUserPrivateInfo(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'photoURL', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.uid == userId
+        && data.uid == request.auth.uid
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 254
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1024))
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidConversation(data, conversationId) {
+      return data.keys().hasAll(['id', 'ownerUid', 'title', 'pinned', 'depth', 'messageCount', 'lastQuestion', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'ownerUid', 'title', 'pinned', 'depth', 'messageCount', 'lastQuestion', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == conversationId
+        && isValidId(data.ownerUid)
+        && data.ownerUid == request.auth.uid
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && data.pinned is bool
+        && isValidDepth(data.depth)
+        && data.messageCount is int && data.messageCount >= 0 && data.messageCount <= 500
+        && data.lastQuestion is string && data.lastQuestion.size() <= 1000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidExplanationMap(exp) {
+      return exp is map
+        && exp.keys().hasAll(['question', 'title', 'shortAnswer', 'sections', 'keyTakeaway', 'suggestedFollowUps'])
+        && exp.keys().hasOnly([
+          'question',
+          'title',
+          'shortAnswer',
+          'sections',
+          'keyTakeaway',
+          'keyTakeaways',
+          'visualisation',
+          'suggestedFollowUps',
+          'depth',
+          'glossary',
+          'understandingChecks',
+          'citations',
+          'media',
+          'generationMeta'
+        ])
+        && exp.question is string && exp.question.size() >= 1 && exp.question.size() <= 1000
+        && exp.title is string && exp.title.size() >= 1 && exp.title.size() <= 160
+        && exp.shortAnswer is string && exp.shortAnswer.size() >= 1 && exp.shortAnswer.size() <= 1200
+        && exp.sections is list && exp.sections.size() >= 1 && exp.sections.size() <= 8
+        && exp.sections[0] is map
+        && exp.keyTakeaway is string && exp.keyTakeaway.size() >= 1 && exp.keyTakeaway.size() <= 500
+        && exp.suggestedFollowUps is list && exp.suggestedFollowUps.size() <= 6
+        && (exp.suggestedFollowUps.size() == 0 || (exp.suggestedFollowUps[0] is string && exp.suggestedFollowUps[0].size() <= 200))
+        && (!('keyTakeaways' in exp) || (exp.keyTakeaways is list && exp.keyTakeaways.size() <= 5))
+        && (!('glossary' in exp) || (exp.glossary is list && exp.glossary.size() <= 10))
+        && (!('understandingChecks' in exp) || (exp.understandingChecks is list && exp.understandingChecks.size() <= 4))
+        && (!('citations' in exp) || (exp.citations is list && exp.citations.size() <= 15))
+        && (!('depth' in exp) || isValidDepth(exp.depth))
+        && (!('visualisation' in exp) || exp.visualisation == null || exp.visualisation is map)
+        && (!('media' in exp) || exp.media == null || exp.media is map)
+        && (!('generationMeta' in exp) || exp.generationMeta == null || exp.generationMeta is map);
+    }
+
+    function isValidConversationMessage(data, conversationId, messageId) {
+      return data.keys().hasAll(['id', 'conversationId', 'ownerUid', 'question', 'depth', 'explanation', 'createdAt'])
+        && data.keys().hasOnly(['id', 'conversationId', 'ownerUid', 'question', 'depth', 'explanation', 'createdAt'])
+        && isValidId(data.id)
+        && data.id == messageId
+        && isValidId(data.conversationId)
+        && data.conversationId == conversationId
+        && isValidId(data.ownerUid)
+        && data.ownerUid == request.auth.uid
+        && data.question is string && data.question.size() >= 1 && data.question.size() <= 1000
+        && isValidDepth(data.depth)
+        && isValidExplanationMap(data.explanation)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidSavedExploration(data, savedId) {
+      return data.keys().hasAll(['id', 'ownerUid', 'conversationId', 'turnId', 'title', 'question', 'savedAt'])
+        && data.keys().hasOnly(['id', 'ownerUid', 'conversationId', 'turnId', 'title', 'question', 'savedAt'])
+        && isValidId(data.id)
+        && data.id == savedId
+        && isValidId(data.ownerUid)
+        && data.ownerUid == request.auth.uid
+        && isValidId(data.conversationId)
+        && isValidId(data.turnId)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && data.question is string && data.question.size() >= 1 && data.question.size() <= 1000
+        && data.savedAt is timestamp;
+    }
+
+    function isValidPrivateNote(data, noteId) {
+      return data.keys().hasAll(['id', 'ownerUid', 'conversationId', 'content', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'ownerUid', 'conversationId', 'content', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == noteId
+        && isValidId(data.ownerUid)
+        && data.ownerUid == request.auth.uid
+        && isValidId(data.conversationId)
+        && data.content is string && data.content.size() <= 10000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidShare(data, shareId) {
+      return data.keys().hasAll(['id', 'ownerUid', 'question', 'title', 'explanation', 'schemaVersion', 'createdAt'])
+        && data.keys().hasOnly(['id', 'ownerUid', 'question', 'title', 'explanation', 'schemaVersion', 'createdAt'])
+        && isValidShareId(data.id)
+        && data.id == shareId
+        && isValidId(data.ownerUid)
+        && data.ownerUid == request.auth.uid
+        && data.question is string && data.question.size() >= 1 && data.question.size() <= 1000
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && isValidExplanationMap(data.explanation)
+        && data.schemaVersion is int && data.schemaVersion == 1
+        && data.createdAt is timestamp;
+    }
+
+    // --- Collection Rules ---
+
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if false;
+      allow create: if isValidId(userId)
+        && isVerifiedOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isVerifiedOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName', 'theme', 'preferredDepth', 'soundEnabled', 'soundVolume', 'soundIntensity', 'updatedAt'
+        ]);
+      allow delete: if isValidId(userId) && isVerifiedOwner(userId);
+
+      match /private/{docId} {
+        allow get: if isValidId(userId) && docId == 'info' && isOwner(userId);
+        allow list: if false;
+        allow create: if isValidId(userId)
+          && docId == 'info'
+          && isVerifiedOwner(userId)
+          && isValidUserPrivateInfo(incoming(), userId)
+          && incoming().updatedAt == request.time;
+        allow update: if isValidId(userId)
+          && docId == 'info'
+          && isVerifiedOwner(userId)
+          && isValidUserPrivateInfo(incoming(), userId)
+          && incoming().uid == existing().uid
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'photoURL', 'updatedAt']);
+        allow delete: if isValidId(userId) && docId == 'info' && isVerifiedOwner(userId);
+      }
+    }
+
+    match /conversations/{conversationId} {
+      allow get: if isValidId(conversationId) && isSignedIn() && existing().ownerUid == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerUid == request.auth.uid;
+      allow create: if isValidId(conversationId)
+        && isVerifiedUser()
+        && isValidConversation(incoming(), conversationId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(conversationId)
+        && isVerifiedUser()
+        && isValidConversation(incoming(), conversationId)
+        && existing().ownerUid == request.auth.uid
+        && incoming().ownerUid == existing().ownerUid
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['title', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['pinned', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['depth', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['title', 'lastQuestion', 'messageCount', 'depth', 'updatedAt'])
+        );
+      allow delete: if isValidId(conversationId) && isVerifiedUser() && existing().ownerUid == request.auth.uid;
+
+      match /messages/{messageId} {
+        allow get: if isValidId(conversationId)
+          && isValidId(messageId)
+          && isSignedIn()
+          && existing().ownerUid == request.auth.uid
+          && get(/databases/$(database)/documents/conversations/$(conversationId)).data.ownerUid == request.auth.uid;
+        allow list: if isSignedIn() && existing().ownerUid == request.auth.uid;
+        allow create: if isValidId(conversationId)
+          && isValidId(messageId)
+          && isVerifiedUser()
+          && isValidConversationMessage(incoming(), conversationId, messageId)
+          && incoming().createdAt == request.time
+          && exists(/databases/$(database)/documents/conversations/$(conversationId))
+          && get(/databases/$(database)/documents/conversations/$(conversationId)).data.ownerUid == request.auth.uid;
+        allow update: if false;
+        allow delete: if isValidId(conversationId)
+          && isValidId(messageId)
+          && isVerifiedUser()
+          && existing().ownerUid == request.auth.uid
+          && get(/databases/$(database)/documents/conversations/$(conversationId)).data.ownerUid == request.auth.uid;
+      }
+    }
+
+    match /savedExplorations/{savedId} {
+      allow get: if isValidId(savedId) && isSignedIn() && existing().ownerUid == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerUid == request.auth.uid;
+      allow create: if isValidId(savedId)
+        && isVerifiedUser()
+        && isValidSavedExploration(incoming(), savedId)
+        && incoming().savedAt == request.time
+        && exists(/databases/$(database)/documents/conversations/$(incoming().conversationId))
+        && get(/databases/$(database)/documents/conversations/$(incoming().conversationId)).data.ownerUid == request.auth.uid;
+      allow update: if false;
+      allow delete: if isValidId(savedId) && isVerifiedUser() && existing().ownerUid == request.auth.uid;
+    }
+
+    match /notes/{noteId} {
+      allow get: if isValidId(noteId) && isSignedIn() && existing().ownerUid == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerUid == request.auth.uid;
+      allow create: if isValidId(noteId)
+        && isVerifiedUser()
+        && isValidPrivateNote(incoming(), noteId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/conversations/$(incoming().conversationId))
+        && get(/databases/$(database)/documents/conversations/$(incoming().conversationId)).data.ownerUid == request.auth.uid;
+      allow update: if isValidId(noteId)
+        && isVerifiedUser()
+        && isValidPrivateNote(incoming(), noteId)
+        && existing().ownerUid == request.auth.uid
+        && incoming().ownerUid == existing().ownerUid
+        && incoming().id == existing().id
+        && incoming().conversationId == existing().conversationId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['content', 'updatedAt']);
+      allow delete: if isValidId(noteId) && isVerifiedUser() && existing().ownerUid == request.auth.uid;
+    }
+
+    match /shares/{shareId} {
+      // Unpredictable high-entropy share links are publicly readable by exact ID only
+      allow get: if isValidShareId(shareId);
+      allow list: if isSignedIn() && existing().ownerUid == request.auth.uid;
+      allow create: if isValidShareId(shareId)
+        && isVerifiedUser()
+        && isValidShare(incoming(), shareId)
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isValidShareId(shareId) && isVerifiedUser() && existing().ownerUid == request.auth.uid;
+    }
+  }
+}
