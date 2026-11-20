@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { motion } from 'motion/react';
 import type { User } from 'firebase/auth';
 import {
   Bookmark,
@@ -192,13 +193,20 @@ export function WorkspaceSidebar({
               setTab('all');
               soundEngine.play('ui.toggle', true);
             }}
-            className={`min-h-[30px] rounded-[7px] text-[12px] font-medium transition-colors cursor-pointer ${
+            className={`relative min-h-[30px] rounded-[7px] text-[12px] font-medium transition-colors cursor-pointer ${
               tab === 'all'
-                ? 'bg-[var(--surface-elevated)] text-[var(--foreground)] shadow-sm'
+                ? 'text-[var(--foreground)]'
                 : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
             }`}
           >
-            history ({threads.length})
+            {tab === 'all' && (
+              <motion.span
+                layoutId="sidebar-tab-indicator"
+                className="absolute inset-0 rounded-[7px] bg-[var(--surface-elevated)] shadow-sm"
+                transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+              />
+            )}
+            <span className="relative z-10">history ({threads.length})</span>
           </button>
           <button
             type="button"
@@ -206,13 +214,20 @@ export function WorkspaceSidebar({
               setTab('saved');
               soundEngine.play('ui.toggle', true);
             }}
-            className={`min-h-[30px] rounded-[7px] text-[12px] font-medium transition-colors cursor-pointer ${
+            className={`relative min-h-[30px] rounded-[7px] text-[12px] font-medium transition-colors cursor-pointer ${
               tab === 'saved'
-                ? 'bg-[var(--surface-elevated)] text-[var(--foreground)] shadow-sm'
+                ? 'text-[var(--foreground)]'
                 : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
             }`}
           >
-            saved ({savedItems.length})
+            {tab === 'saved' && (
+              <motion.span
+                layoutId="sidebar-tab-indicator"
+                className="absolute inset-0 rounded-[7px] bg-[var(--surface-elevated)] shadow-sm"
+                transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+              />
+            )}
+            <span className="relative z-10">saved ({savedItems.length})</span>
           </button>
         </div>
       </div>

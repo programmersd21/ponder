@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
   Bookmark,
@@ -10,8 +10,10 @@ import {
   ExternalLink,
   FileDown,
   Headphones,
+  Info,
   Maximize2,
   Minimize2,
+  MoreHorizontal,
   Pause,
   Play,
   Share2,
@@ -78,6 +80,28 @@ export function ExplanationCard({
   const [glossaryExpanded, setGlossaryExpanded] = useState(false);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
   const [imageError, setImageError] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!exportMenuOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setExportMenuOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setExportMenuOpen(false);
+    };
+    window.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [exportMenuOpen]);
+
+  const closeExportMenu = () => setExportMenuOpen(false);
 
   const readingTime = useMemo(() => calculateReadingTime(explanation), [explanation]);
 
@@ -133,9 +157,20 @@ export function ExplanationCard({
       ? explanation.keyTakeaways
       : [explanation.keyTakeaway];
 
-  const metaNotice = explanation.generationMeta?.fallbackUsed
-    ? explanation.generationMeta.notice
-    : explanation.generationMeta?.researchNote;
+  const generationMeta = explanation.generationMeta;
+  const metaBadge = generationMeta?.fallbackUsed
+    ? {
+        kind: 'fallback' as const,
+        label: 'Quick mode',
+        detail: generationMeta.notice ?? 'Generated with a lighter model for speed.',
+      }
+    : generationMeta?.researchNote
+      ? {
+          kind: 'research' as const,
+          label: 'Researched',
+          detail: generationMeta.researchNote,
+        }
+      : null;
 
   return (
     <motion.article
@@ -145,30 +180,27 @@ export function ExplanationCard({
       className={turnIndex > 0 ? 'border-t border-[var(--border)] pt-12' : ''}
     >
       {/* Reading Column Header & Action Controls */}
-      <div className="mx-auto max-w-[740px] space-y-5">
-        <header className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2 text-[12px] font-mono text-[var(--muted-foreground)]">
-            <div className="flex flex-wrap items-center gap-2">
-              <span>{turnIndex === 0 ? 'Question' : `Follow-up ${turnIndex}`}</span>
+      <div className="mx-auto max-w-[768px] space-y-5">
+        <header className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--surface-secondary)] px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--muted-foreground)]">
+                {turnIndex === 0 ? 'Question' : `Follow-up ${turnIndex}`}
+              </span>
               {readingTime.label && (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <span className="tabular-nums">{readingTime.label}</span>
-                </>
+                <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[11px] font-medium text-[var(--muted-foreground)] tabular-nums">
+                  {readingTime.label}
+                </span>
               )}
               {explanation.depth && (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <span>{DEPTH_LABELS[explanation.depth] ?? explanation.depth}</span>
-                </>
+                <span className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[11px] font-medium text-[var(--muted-foreground)]">
+                  {DEPTH_LABELS[explanation.depth] ?? explanation.depth}
+                </span>
               )}
               {citations.length > 0 && (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <span>
-                    {citations.length} {citations.length === 1 ? 'source' : 'sources'}
-                  </span>
-                </>
+                <span className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[11px] font-medium text-[var(--muted-foreground)]">
+                  {citations.length} {citations.length === 1 ? 'source' : 'sources'}
+                </span>
               )}
             </div>
 
@@ -183,7 +215,7 @@ export function ExplanationCard({
             )}
           </div>
 
-          <p className="text-[15px] font-medium text-[var(--muted-foreground)]">
+          <p className="border-l-2 border-[var(--accent)]/50 pl-4 text-[15px] font-medium leading-relaxed text-[var(--muted-foreground)]">
             “{turn.question}”
           </p>
 
@@ -231,36 +263,6 @@ export function ExplanationCard({
               )}
             </button>
 
-            <button
-              type="button"
-              onClick={() => void handleCopyExplanation()}
-              title="copy clean explanation text"
-              aria-label="copy explanation text"
-              className="inline-flex min-h-[34px] items-center gap-1.5 rounded-[8px] border border-[var(--border)] bg-[var(--surface)] px-2.5 text-[12.5px] font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--surface-secondary)] whitespace-nowrap shrink-0 cursor-pointer"
-            >
-              {copiedText ? (
-                <>
-                  <Check className="h-3.5 w-3.5 text-[var(--success)]" aria-hidden="true" />
-                  <span>copied</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span>copy</span>
-                </>
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={handlePdfDownload}
-              title="export this exploration as a formatted pdf"
-              aria-label="export explanation as pdf"
-              className="inline-flex min-h-[34px] items-center gap-1.5 rounded-[8px] border border-[var(--border)] bg-[var(--surface)] px-2.5 text-[12.5px] font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--surface-secondary)] whitespace-nowrap shrink-0 cursor-pointer"
-            >
-              <FileDown className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>pdf</span>
-            </button>
 
             {!readOnly && onToggleSave && (
               <button
@@ -282,28 +284,6 @@ export function ExplanationCard({
                   aria-hidden="true"
                 />
                 <span>{isSaved ? 'saved' : 'save'}</span>
-              </button>
-            )}
-
-            {!readOnly && onShareTurn && (
-              <button
-                type="button"
-                onClick={() => void onShareTurn(turn)}
-                disabled={shareStatus === 'sharing'}
-                title="generate a persistent read-only share link"
-                className="inline-flex min-h-[34px] items-center gap-1.5 rounded-[8px] border border-[var(--border)] bg-[var(--surface)] px-2.5 text-[12.5px] font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--surface-secondary)] whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-50"
-              >
-                {shareStatus === 'copied' ? (
-                  <>
-                    <Check className="h-3.5 w-3.5 text-[var(--success)]" aria-hidden="true" />
-                    <span>Link copied</span>
-                  </>
-                ) : (
-                  <>
-                    <Share2 className="h-3.5 w-3.5" aria-hidden="true" />
-                    <span>{shareStatus === 'sharing' ? 'sharing…' : 'share'}</span>
-                  </>
-                )}
               </button>
             )}
 
@@ -350,6 +330,73 @@ export function ExplanationCard({
                 <span>{focusMode ? 'exit focus' : 'focus'}</span>
               </button>
             )}
+
+            <div ref={exportMenuRef} className="relative ml-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  soundEngine.play('ui.press', true);
+                  setExportMenuOpen((v) => !v);
+                }}
+                aria-expanded={exportMenuOpen}
+                aria-haspopup="menu"
+                title="export and share options"
+                className={`inline-flex min-h-[34px] items-center gap-1.5 rounded-[8px] border px-2.5 text-[12.5px] font-medium transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+                  exportMenuOpen
+                    ? 'border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent)]'
+                    : 'border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-secondary)]'
+                }`}
+              >
+                <MoreHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>export</span>
+                <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${exportMenuOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+              </button>
+
+              <AnimatePresence>
+                {exportMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 2, scale: 0.98 }}
+                    transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                    role="menu"
+                    aria-label="export and share"
+                    className="absolute right-0 top-full z-30 mt-1.5 w-52 overflow-hidden rounded-[11px] border border-[var(--border)] bg-[var(--surface-elevated)] p-1 shadow-[var(--shadow-elevated)]"
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => { closeExportMenu(); void handleCopyExplanation(); }}
+                      className="flex w-full items-center gap-2 rounded-[7px] px-2.5 py-2 text-left text-[12.5px] font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--surface-secondary)] cursor-pointer"
+                    >
+                      {copiedText ? <Check className="h-3.5 w-3.5 text-[var(--success)]" /> : <Copy className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />}
+                      <span>{copiedText ? 'Copied!' : 'Copy text'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => { closeExportMenu(); handlePdfDownload(); }}
+                      className="flex w-full items-center gap-2 rounded-[7px] px-2.5 py-2 text-left text-[12.5px] font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--surface-secondary)] cursor-pointer"
+                    >
+                      <FileDown className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
+                      <span>Download PDF</span>
+                    </button>
+                    {!readOnly && onShareTurn && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        disabled={shareStatus === 'sharing'}
+                        onClick={() => { closeExportMenu(); void onShareTurn(turn); }}
+                        className="flex w-full items-center gap-2 rounded-[7px] px-2.5 py-2 text-left text-[12.5px] font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--surface-secondary)] cursor-pointer disabled:opacity-50"
+                      >
+                        {shareStatus === 'copied' ? <Check className="h-3.5 w-3.5 text-[var(--success)]" /> : <Share2 className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />}
+                        <span>{shareStatus === 'copied' ? 'Link copied' : shareStatus === 'sharing' ? 'Sharing…' : 'Share link'}</span>
+                      </button>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
           {/* Active Speech Controller Drawer */}
@@ -445,9 +492,16 @@ export function ExplanationCard({
             </div>
           )}
 
-          {metaNotice && (
-            <div className="text-[12px] text-[var(--muted-foreground)]">
-              {metaNotice}
+          {metaBadge && (
+            <div className="group relative inline-flex">
+              <span
+                className="inline-flex cursor-help items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-secondary)] px-2.5 py-1 text-[11px] font-medium text-[var(--muted-foreground)] transition-colors hover:border-[var(--accent)]/50 hover:text-[var(--foreground)]"
+                title={metaBadge.detail}
+              >
+                <Info className="h-3 w-3 shrink-0 opacity-70" aria-hidden="true" />
+                {metaBadge.label}
+              </span>
+              <span className="sr-only">{metaBadge.detail}</span>
             </div>
           )}
         </header>
@@ -511,14 +565,21 @@ export function ExplanationCard({
         {/* Structured Prose Sections */}
         <div className="space-y-6 pt-1">
           {explanation.sections.map((section, sIdx) => (
-            <section key={sIdx} className="space-y-2">
+            <motion.section
+              key={sIdx}
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-40px' }}
+              transition={{ duration: 0.35, delay: Math.min(sIdx * 0.05, 0.2), ease: [0.16, 1, 0.3, 1] }}
+              className="space-y-2"
+            >
               <h2 className="font-display text-[19.5px] font-semibold text-[var(--foreground)]">
                 {section.heading}
               </h2>
               <p className="text-[15.5px] leading-[1.72] text-[var(--muted-foreground)] whitespace-pre-line">
                 <MathText text={section.content} />
               </p>
-            </section>
+            </motion.section>
           ))}
         </div>
       </div>
@@ -531,7 +592,7 @@ export function ExplanationCard({
       )}
 
       {/* Key Takeaways, Glossary, Understanding Checks, sources & Follow-Ups */}
-      <div className="mx-auto mt-8 max-w-[740px] space-y-6">
+      <div className="mx-auto mt-8 max-w-[768px] space-y-6">
         <div className="rounded-[14px] border border-[var(--border)] bg-[var(--surface-secondary)] px-5 py-4">
           <div className="font-mono text-[11px] font-medium text-[var(--accent)]">
             {takeaways.length > 1 ? 'key takeaways' : 'key takeaway'}
@@ -739,10 +800,10 @@ export function ExplanationCard({
                     soundEngine.play('ui.press', true);
                     onFollowUp(followUp);
                   }}
-                  className="inline-flex min-h-[38px] items-center gap-1.5 rounded-[9px] border border-[var(--border)] bg-[var(--surface)] px-3.5 py-2 text-left text-[13px] font-medium text-[var(--foreground)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-subtle)] cursor-pointer"
+                  className="group inline-flex min-h-[38px] items-center gap-1.5 rounded-[9px] border border-[var(--border)] bg-[var(--surface)] px-3.5 py-2 text-left text-[13px] font-medium text-[var(--foreground)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[var(--accent-subtle)] hover:shadow-[var(--shadow-subtle)] cursor-pointer"
                 >
                   <span>{followUp}</span>
-                  <ArrowRight className="h-3.5 w-3.5 shrink-0 text-[var(--muted-foreground)]" aria-hidden="true" />
+                  <ArrowRight className="h-3.5 w-3.5 shrink-0 text-[var(--muted-foreground)] transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-[var(--accent)]" aria-hidden="true" />
                 </button>
               ))}
             </div>

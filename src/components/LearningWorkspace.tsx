@@ -641,10 +641,10 @@ export function LearningWorkspace({
           </main>
         ) : (
           /* Active Learning workspace */
-          <main className="mx-auto max-w-[980px] px-4 py-8 sm:px-6 sm:py-12">
+          <main className="mx-auto max-w-[980px] px-4 pt-10 pb-12 sm:px-6 sm:pt-14 sm:pb-16">
             <div className="space-y-12">
               {loadingThreadTurns && turns.length === 0 && !streaming && (
-                <div className="mx-auto flex max-w-[740px] items-center gap-3 py-10 text-sm text-[var(--muted-foreground)]">
+                <div className="mx-auto flex max-w-[768px] items-center gap-3 py-10 text-sm text-[var(--muted-foreground)]">
                   <PonderLogo size={20} spinning />
                   <span>Loading exploration from your workspace…</span>
                 </div>
@@ -657,7 +657,7 @@ export function LearningWorkspace({
                     initial={{ opacity: 0, y: -6 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -6 }}
-                    className="mx-auto max-w-[740px] rounded-[12px] border border-[var(--border-strong)] bg-[var(--surface-elevated)] p-4 shadow-[var(--shadow-subtle)]"
+                    className="mx-auto max-w-[768px] rounded-[12px] border border-[var(--border-strong)] bg-[var(--surface-elevated)] p-4 shadow-[var(--shadow-subtle)]"
                     role="status"
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -730,7 +730,7 @@ export function LearningWorkspace({
                     exit={{ opacity: 0, y: -6 }}
                     transition={{ duration: 0.16 }}
                     aria-label="private study notes"
-                    className="mx-auto max-w-[740px] rounded-[14px] border border-[var(--border-strong)] bg-[var(--surface)] p-4 shadow-[var(--shadow-subtle)] space-y-3"
+                    className="mx-auto max-w-[768px] rounded-[14px] border border-[var(--border-strong)] bg-[var(--surface)] p-4 shadow-[var(--shadow-subtle)] space-y-3"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
@@ -827,7 +827,7 @@ export function LearningWorkspace({
                   aria-live="polite"
                   className={turns.length > 0 ? 'border-t border-[var(--border)] pt-12' : ''}
                 >
-                  <div className="mx-auto max-w-[740px] space-y-5">
+                  <div className="mx-auto max-w-[768px] space-y-5">
                     <div className="flex flex-wrap items-center justify-between gap-3 rounded-[11px] border border-[var(--border)] bg-[var(--surface-secondary)] px-3.5 py-2.5">
                       <div className="flex items-center gap-2.5 text-[13px] text-[var(--foreground)]">
                         <PonderLogo size={18} spinning />
@@ -897,7 +897,7 @@ export function LearningWorkspace({
 
               {/* Inline Error for Follow-up */}
               {errorState && activeThread && (
-                <div className="mx-auto max-w-[740px]">
+                <div className="mx-auto max-w-[768px]">
                   <div
                     role="alert"
                     className="flex flex-col gap-3 rounded-[12px] border border-[var(--destructive)]/40 bg-[var(--surface)] p-4 sm:flex-row sm:items-center sm:justify-between"
@@ -935,7 +935,7 @@ export function LearningWorkspace({
 
               {/* Persistent Follow-up Composer */}
               {activeThread && !streaming && (
-                <div className="mx-auto max-w-[740px] border-t border-[var(--border)] pt-8">
+                <div className="mx-auto max-w-[768px] border-t border-[var(--border)] pt-8">
                   <div className="mb-2.5 text-[13px] font-medium text-[var(--muted-foreground)]">
                     ask a follow-up about {lastTurn?.explanation.title.toLowerCase() ?? 'this topic'}
                   </div>
