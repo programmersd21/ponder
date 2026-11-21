@@ -84,6 +84,7 @@ export default function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [geminiConfigured, setGeminiConfigured] = useState<boolean | null>(null);
   const [idToken, setIdToken] = useState<string | null>(null);
+  const tokenRef = useRef<string | null>(null);
   const [migrationNote, setMigrationNote] = useState<string | null>(null);
 
   const [threads, setThreads] = useState<ExplorationThread[]>(() => loadGuestThreads());
@@ -120,8 +121,10 @@ export default function App() {
   }, []);
 
   const refreshGeminiStatus = useCallback(async (freshToken?: string | null) => {
+    // Prefer an explicitly supplied token, then the ref (always current),
+    // so a stale render can never downgrade a signed-in result to "not configured".
+    const authHeader = freshToken || tokenRef.current;
     try {
-      const authHeader = freshToken || idToken;
       const opts = authHeader ? { headers: { Authorization: `Bearer ${authHeader}` } } : undefined;
       const [gRes, sRes] = await Promise.all([
         fetch('/api/gemini/status', opts),
@@ -133,11 +136,14 @@ export default function App() {
     } catch {
       setGeminiConfigured(false);
     }
-  }, [idToken]);
+  }, []);
 
   useEffect(() => {
     void refreshGeminiStatus();
-  }, [refreshGeminiStatus, user]);
+    // Only re-run when the signed-in user changes; token updates are pushed
+    // via tokenRef and an explicit refresh in the auth listener.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   useEffect(() => {
     saveDepthPreference(depth);
@@ -172,11 +178,14 @@ export default function App() {
       if (nextUser) {
         try {
           token = await nextUser.getIdToken();
+          tokenRef.current = token;
           setIdToken(token);
         } catch {
+          tokenRef.current = null;
           setIdToken(null);
         }
       } else {
+        tokenRef.current = null;
         setIdToken(null);
       }
 
