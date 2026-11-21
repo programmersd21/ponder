@@ -736,7 +736,11 @@ export default function App() {
     return (
       <MotionConfig reducedMotion="user">
         <div className="min-h-dvh bg-[var(--background)] text-[var(--foreground)]">
-          <GeminiSetup idToken={idToken} onConfigured={() => void refreshGeminiStatus()} />
+          <GeminiSetup
+            idToken={idToken}
+            onConfigured={() => void refreshGeminiStatus()}
+            onSignIn={handleSignIn}
+          />
         </div>
       </MotionConfig>
     );

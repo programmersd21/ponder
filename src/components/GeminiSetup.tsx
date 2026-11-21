@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { ArrowRight, Eye, EyeOff, KeyRound, Loader2 } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, KeyRound, Loader2, LogIn } from 'lucide-react';
 
 type GeminiSetupProps = {
   idToken?: string | null;
   onConfigured: () => void;
+  onSignIn?: () => void;
 };
 
 type Status = 'idle' | 'validating' | 'success' | 'error';
 
-export function GeminiSetup({ idToken, onConfigured }: GeminiSetupProps) {
+export function GeminiSetup({ idToken, onConfigured, onSignIn }: GeminiSetupProps) {
   const [apiKey, setApiKey] = useState('');
   const [show, setShow] = useState(false);
   const [status, setStatus] = useState<Status>('idle');
@@ -20,7 +21,7 @@ export function GeminiSetup({ idToken, onConfigured }: GeminiSetupProps) {
     const trimmed = apiKey.trim();
     if (trimmed.length < 20) {
       setStatus('error');
-      setMessage('Enter a complete Gemini API key.');
+      setMessage('enter a complete gemini api key.');
       return;
     }
     setStatus('validating');
@@ -34,14 +35,14 @@ export function GeminiSetup({ idToken, onConfigured }: GeminiSetupProps) {
       const gData = (await gRes.json()) as { ok?: boolean; valid?: boolean; message?: string; error?: string; category?: string };
       if (!gRes.ok || !gData.ok) {
         setStatus('error');
-        setMessage(gData.error || 'Could not connect Gemini key.');
+        setMessage(gData.error || 'could not connect gemini key.');
         return;
       }
 
       const sKey = serperKey.trim();
       if (sKey.length < 10) {
         setStatus('error');
-        setMessage('Please add a Serper API key as well.');
+        setMessage('please add a serper api key as well.');
         return;
       }
 
@@ -53,18 +54,18 @@ export function GeminiSetup({ idToken, onConfigured }: GeminiSetupProps) {
       const sData = (await sRes.json()) as { ok?: boolean; valid?: boolean; message?: string; error?: string };
       if (!sRes.ok || !sData.ok) {
         setStatus('error');
-        setMessage(sData.error || 'Could not connect Serper key.');
+        setMessage(sData.error || 'could not connect serper key.');
         return;
       }
 
       setStatus('success');
-      setMessage('Gemini and Serper connected.');
+      setMessage('gemini and serper connected.');
       setApiKey('');
       setSerperKey('');
       setTimeout(() => onConfigured(), 600);
     } catch {
       setStatus('error');
-      setMessage('Network error. Check your connection and try again.');
+      setMessage('network error. check your connection and try again.');
     }
   };
 
@@ -92,7 +93,7 @@ export function GeminiSetup({ idToken, onConfigured }: GeminiSetupProps) {
 
         <div className="space-y-3">
           <label htmlFor="gemini-key" className="text-[13px] font-medium text-[var(--muted-foreground)]">
-            Gemini API key
+            gemini api key
           </label>
           <div className="flex items-center gap-2 rounded-[12px] border border-[var(--border-strong)] bg-[var(--surface)] px-3 py-2">
             <KeyRound className="h-4 w-4 text-[var(--muted-foreground)]" aria-hidden="true" />
@@ -101,7 +102,7 @@ export function GeminiSetup({ idToken, onConfigured }: GeminiSetupProps) {
               type={show ? 'text' : 'password'}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder="paste your API key"
+              placeholder="paste your api key"
               autoComplete="off"
               spellCheck={false}
               className="flex-1 bg-transparent text-[14px] text-[var(--foreground)] placeholder:text-[var(--subtle-foreground)] focus:outline-none"
@@ -109,7 +110,7 @@ export function GeminiSetup({ idToken, onConfigured }: GeminiSetupProps) {
             <button
               type="button"
               onClick={() => setShow((v) => !v)}
-              aria-label={show ? 'Hide API key' : 'Show API key'}
+              aria-label={show ? 'hide api key' : 'show api key'}
               className="inline-flex h-8 w-8 items-center justify-center rounded-[7px] text-[var(--muted-foreground)] hover:bg-[var(--surface-secondary)] hover:text-[var(--foreground)] cursor-pointer"
             >
               {show ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
@@ -128,12 +129,12 @@ export function GeminiSetup({ idToken, onConfigured }: GeminiSetupProps) {
                 type={showSerper ? 'text' : 'password'}
                 value={serperKey}
                 onChange={(e) => setSerperKey(e.target.value)}
-                placeholder="Paste your Serper API key"
+                placeholder="paste your serper api key"
                 autoComplete="off"
                 spellCheck={false}
                 className="flex-1 bg-transparent text-[14px] text-[var(--foreground)] placeholder:text-[var(--subtle-foreground)] focus:outline-none"
               />
-              <button type="button" onClick={() => setShowSerper((v) => !v)} aria-label={showSerper ? 'Hide key' : 'Show key'} className="inline-flex h-8 w-8 items-center justify-center rounded-[7px] text-[var(--muted-foreground)] hover:bg-[var(--surface-secondary)] cursor-pointer">
+              <button type="button" onClick={() => setShowSerper((v) => !v)} aria-label={showSerper ? 'hide key' : 'show key'} className="inline-flex h-8 w-8 items-center justify-center rounded-[7px] text-[var(--muted-foreground)] hover:bg-[var(--surface-secondary)] cursor-pointer">
                 {showSerper ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
               </button>
             </div>
@@ -163,8 +164,29 @@ export function GeminiSetup({ idToken, onConfigured }: GeminiSetupProps) {
           )}
         </div>
 
+        {onSignIn && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <span className="h-px flex-1 bg-[var(--border)]" />
+              <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--subtle-foreground)]">or</span>
+              <span className="h-px flex-1 bg-[var(--border)]" />
+            </div>
+            <button
+              type="button"
+              onClick={onSignIn}
+              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[9px] border border-[var(--border-strong)] bg-[var(--surface)] px-5 py-2.5 text-[14px] font-medium text-[var(--foreground)] transition-all duration-150 hover:bg-[var(--surface-secondary)] active:scale-[0.98] cursor-pointer"
+            >
+              <LogIn className="h-4 w-4" aria-hidden="true" />
+              <span>sign in with google instead</span>
+            </button>
+            <p className="text-center text-[12px] leading-relaxed text-[var(--muted-foreground)]">
+              signing in moves your temporary chats and keys into your account.
+            </p>
+          </div>
+        )}
+
         <p className="text-[12px] leading-relaxed text-[var(--muted-foreground)]">
-          Your key is validated with Gemini and stored only on the server. It is never shown again after saving.
+          your key is validated with gemini and stored only on the server. it is never shown again after saving.
         </p>
       </div>
     </main>
