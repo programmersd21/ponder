@@ -206,6 +206,63 @@ export function createApp(): express.Express {
     res.json({ ok: true, valid: true, message: validation.message, persisted: Boolean(uid) });
   });
 
+  // Promote a guest ("temp") session's API credentials into the signed-in
+  // account. Called right after Google sign-in so keys entered before signing
+  // in keep working on the real account. Never overwrites an existing account
+  // credential — the user's saved key always wins.
+  app.post('/api/account/migrate-credentials', async (req, res) => {
+    const schema = z.object({ idToken: z.string().min(1) });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ ok: false, error: 'Invalid migration payload.' });
+      return;
+    }
+    let uid: string | null = null;
+    try {
+      uid = await verifyFirebaseIdToken(parsed.data.idToken);
+    } catch {
+      uid = null;
+    }
+    if (!uid) {
+      res.status(401).json({ ok: false, error: 'Sign-in could not be verified.' });
+      return;
+    }
+
+    const { sessionId } = await resolveIdentity(req);
+    const migrated: { gemini: boolean; serper: boolean } = { gemini: false, serper: false };
+
+    try {
+      // Gemini: account storage takes priority; skip if the account already has one.
+      const existingGemini = await readAccountCredential(uid);
+      if (!existingGemini) {
+        const guestGemini =
+          readCookieCredential(req, GEMINI_COOKIE) || readSessionCredential(sessionId);
+        if (guestGemini) {
+          await storeAccountCredential(uid, guestGemini);
+          migrated.gemini = true;
+        }
+      }
+
+      // Serper: same rule.
+      const existingSerper = await readAccountSerperCredential(uid);
+      if (!existingSerper) {
+        const guestSerper =
+          readCookieCredential(req, SERPER_COOKIE) || readSessionSerperCredential(sessionId);
+        if (guestSerper) {
+          await storeAccountSerperCredential(uid, guestSerper);
+          migrated.serper = true;
+        }
+      }
+    } catch (err) {
+      console.error('[ponder] credential migration failed:', err instanceof Error ? err.message : String(err));
+    }
+
+    // Clear the guest credential cookies so they aren't reused by another account.
+    res.clearCookie(GEMINI_COOKIE, cookieOptions());
+    res.clearCookie(SERPER_COOKIE, cookieOptions());
+    res.json({ ok: true, migrated });
+  });
+
   app.post('/api/gemini/disconnect', async (req, res) => {
     const schema = z.object({ idToken: z.string().optional() });
     const parsed = schema.safeParse(req.body ?? {});

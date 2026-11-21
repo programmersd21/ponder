@@ -492,6 +492,91 @@ export async function fetchPublicShareSnapshot(shareId: string): Promise<{
   }
 }
 
+export type GuestMigrationResult = {
+  conversations: number;
+  saved: number;
+  notes: number;
+};
+
+/**
+ * Promote a guest ("temp") workspace into the signed-in account.
+ *
+ * Guest threads/saves/notes live only in localStorage under client-generated
+ * IDs. This writes each of them into the owner-scoped Firestore collections,
+ * remapping guest IDs to the new cloud conversation IDs so bookmarks and
+ * notes still point at the right conversations.
+ *
+ * Idempotency is handled by the caller via a localStorage marker keyed by uid.
+ */
+export async function migrateGuestDataToAccount(
+  ownerUid: string,
+  guestThreads: ExplorationThread[],
+  guestSaved: SavedExplorationItem[],
+  guestNotes: Record<string, string>
+): Promise<GuestMigrationResult> {
+  const result: GuestMigrationResult = { conversations: 0, saved: 0, notes: 0 };
+
+  // guest thread id -> new cloud conversation id
+  const conversationIdMap = new Map<string, string>();
+  // `${guest conversation id}:${guest turn id}` -> new cloud message id
+  const turnIdMap = new Map<string, string>();
+
+  for (const thread of guestThreads) {
+    if (!thread.turns.length) continue;
+    let cloudConversationId: string | null = null;
+    let messageCount = 0;
+
+    for (const turn of thread.turns) {
+      try {
+        const { conversationId } = await persistConversationTurn(
+          ownerUid,
+          cloudConversationId,
+          turn,
+          thread.title,
+          messageCount
+        );
+        if (!cloudConversationId) {
+          cloudConversationId = conversationId;
+          conversationIdMap.set(thread.id, conversationId);
+          result.conversations += 1;
+        }
+        turnIdMap.set(`${thread.id}:${turn.id}`, turn.id.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 128));
+        messageCount += 1;
+      } catch (err) {
+        console.error('[ponder] failed to migrate guest turn:', err);
+      }
+    }
+
+    const note = guestNotes[thread.id];
+    if (cloudConversationId && note && note.trim()) {
+      try {
+        await savePrivateNote(ownerUid, cloudConversationId, note);
+        result.notes += 1;
+      } catch (err) {
+        console.error('[ponder] failed to migrate guest note:', err);
+      }
+    }
+  }
+
+  for (const item of guestSaved) {
+    const cloudConversationId = conversationIdMap.get(item.conversationId);
+    if (!cloudConversationId) continue;
+    const cloudTurnId = turnIdMap.get(`${item.conversationId}:${item.turnId}`) ?? item.turnId;
+    try {
+      await saveExplorationBookmark(ownerUid, {
+        ...item,
+        conversationId: cloudConversationId,
+        turnId: cloudTurnId,
+      });
+      result.saved += 1;
+    } catch (err) {
+      console.error('[ponder] failed to migrate guest bookmark:', err);
+    }
+  }
+
+  return result;
+}
+
 export async function deleteAllAccountDataInFirestore(ownerUid: string): Promise<void> {
   const convSnap = await getDocs(
     query(collection(db, 'conversations'), where('ownerUid', '==', ownerUid))

@@ -36,6 +36,7 @@ type WorkspaceSidebarProps = {
   onSignOut: () => Promise<void>;
   onDeleteAllData: () => Promise<void>;
   authError?: string | null;
+  migrationNote?: string | null;
 };
 
 type GroupKey = 'Pinned' | 'Today' | 'Yesterday' | 'Previous 7 days' | 'Older';
@@ -73,6 +74,7 @@ export function WorkspaceSidebar({
   onSignOut,
   onDeleteAllData,
   authError,
+  migrationNote,
 }: WorkspaceSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [tab, setTab] = useState<'all' | 'saved'>('all');
@@ -533,6 +535,12 @@ export function WorkspaceSidebar({
               <LogIn className="h-3.5 w-3.5 text-[var(--accent)]" aria-hidden="true" />
               <span>sign in with Google</span>
             </button>
+          </div>
+        )}
+
+        {migrationNote && (
+          <div role="status" className="rounded-[9px] border border-[var(--success)]/40 bg-[var(--success-soft)] px-3 py-2 text-[11.5px] leading-snug text-[var(--success)]">
+            {migrationNote}
           </div>
         )}
 

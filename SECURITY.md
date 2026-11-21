@@ -21,6 +21,7 @@ When reporting, include:
 ## Security Notes
 
 - **API keys:** Gemini and Serper keys are user-provided. They are validated server-side and stored encrypted; never commit keys to the repository or share them in issues.
+- **Temporary → account transfer:** When a guest signs in, their session credentials are copied to account-scoped encrypted storage via an authenticated endpoint that requires a verified Firebase ID token. An existing account credential is never overwritten, and the temporary cookies are cleared after the transfer.
 - **Encryption key:** Set `PONDER_ENCRYPTION_KEY` to a stable secret in production so stored credentials can be decrypted across restarts/instances. If unset, an ephemeral key is used and credentials do not persist.
 - **Secrets in config:** Keep `.env` files local (they are gitignored). Use `.env.example` as a template with placeholders only.
 - **Deployment:** When deploying (e.g. Vercel), configure secrets via environment variables, not in source control.

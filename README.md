@@ -13,6 +13,7 @@ interactive concept learning application. ask a question and ponder pairs a clea
 - conversation history, saved explorations, private notes
 - shareable read-only exploration snapshots
 - google sign-in and firestore persistence
+- automatic transfer of your temporary workspace (chats, saved explorations, notes) and API credentials into your account when you sign in
 - mandatory gemini and serper api key onboarding
 - pdf export and text-to-speech listening
 
@@ -50,7 +51,19 @@ the application runs at http://localhost:3000.
 
 ## environment configuration
 
-see `.env.example`. `GEMINI_API_KEY` is required for explanations. `SERPER_API_KEY` is required for web search. firebase client configuration lives in `firebase-config.json`.
+see `.env.example`. `GEMINI_API_KEY` is required for explanations. `SERPER_API_KEY` is required for web search. firebase client configuration is read from the `VITE_FIREBASE_*` variables (see `.env.example`). Server-side account credential storage additionally requires `FIREBASE_SERVICE_ACCOUNT_JSON` (or `GOOGLE_APPLICATION_CREDENTIALS`) and a stable `PONDER_ENCRYPTION_KEY`.
+
+## temporary workspace → account transfer
+
+you can use ponder without signing in. in that case your chats, saved explorations, notes and api keys live only on this device / in a browser session.
+
+when you sign in with google for the first time on that browser, ponder automatically:
+
+- moves your temporary chats, saved explorations and notes into your account's firestore data (ids are remapped so everything still links up)
+- copies the gemini and serper api keys you entered into your account's encrypted credential store (an existing account key is never overwritten)
+- clears the temporary local data once the transfer succeeds
+
+this runs once per account per browser. after that, everything is stored under your signed-in account.
 
 ## testing
 

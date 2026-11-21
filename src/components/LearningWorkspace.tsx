@@ -81,6 +81,8 @@ type LearningWorkspaceProps = {
   onSignOut: () => Promise<void>;
   onDeleteAllData: () => Promise<void>;
   authError: string | null;
+  migrationNote?: string | null;
+  idToken?: string | null;
   composerInputRef: React.RefObject<HTMLTextAreaElement | null>;
   loadingThreadTurns?: boolean;
 };
@@ -128,6 +130,8 @@ export function LearningWorkspace({
   onSignOut,
   onDeleteAllData,
   authError,
+  migrationNote,
+  idToken,
   composerInputRef,
   loadingThreadTurns = false,
 }: LearningWorkspaceProps) {
@@ -243,6 +247,9 @@ export function LearningWorkspace({
 
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (idToken) {
+        headers['Authorization'] = `Bearer ${idToken}`;
+      }
       if (user?.uid) {
         headers['x-ponder-uid'] = user.uid;
       }
@@ -495,6 +502,7 @@ export function LearningWorkspace({
           onSignOut={onSignOut}
           onDeleteAllData={onDeleteAllData}
           authError={authError}
+          migrationNote={migrationNote}
         />
       )}
 

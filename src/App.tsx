@@ -24,6 +24,7 @@ import {
   fetchPrivateNote,
   fetchSavedExplorations,
   fetchUserConversations,
+  migrateGuestDataToAccount,
   persistConversationTurn,
   removeSavedExplorationBookmark,
   renameConversationInFirestore,
@@ -44,12 +45,15 @@ import { WHY_MOON_PHASES_EXPLANATION } from './lib/showcaseData.ts';
 import { soundEngine, type SoundPreferences } from './lib/soundEngine.ts';
 import {
   applyTheme,
+  clearGuestData,
   clearGuestThreads,
   getSavedDepth,
   getSavedTheme,
+  hasMigratedGuestData,
   loadGuestNotesMap,
   loadGuestSaved,
   loadGuestThreads,
+  markGuestDataMigrated,
   saveDepthPreference,
   saveGuestNotesMap,
   saveGuestSaved,
@@ -80,6 +84,7 @@ export default function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [geminiConfigured, setGeminiConfigured] = useState<boolean | null>(null);
   const [idToken, setIdToken] = useState<string | null>(null);
+  const [migrationNote, setMigrationNote] = useState<string | null>(null);
 
   const [threads, setThreads] = useState<ExplorationThread[]>(() => loadGuestThreads());
   const [savedItems, setSavedItems] = useState<SavedExplorationItem[]>(() => loadGuestSaved());
@@ -114,16 +119,21 @@ export default function App() {
     return () => document.removeEventListener('input', onInput, true);
   }, []);
 
-  const refreshGeminiStatus = useCallback(async () => {
+  const refreshGeminiStatus = useCallback(async (freshToken?: string | null) => {
     try {
-      const [gRes, sRes] = await Promise.all([fetch('/api/gemini/status'), fetch('/api/serper/status')]);
+      const authHeader = freshToken || idToken;
+      const opts = authHeader ? { headers: { Authorization: `Bearer ${authHeader}` } } : undefined;
+      const [gRes, sRes] = await Promise.all([
+        fetch('/api/gemini/status', opts),
+        fetch('/api/serper/status', opts),
+      ]);
       const gData = (await gRes.json()) as { configured?: boolean };
       const sData = (await sRes.json()) as { configured?: boolean };
       setGeminiConfigured(Boolean(gData.configured && sData.configured));
     } catch {
       setGeminiConfigured(false);
     }
-  }, []);
+  }, [idToken]);
 
   useEffect(() => {
     void refreshGeminiStatus();
@@ -156,9 +166,12 @@ export default function App() {
       setUser(nextUser);
       setAuthReady(true);
       setAuthError(null);
+      setMigrationNote(null);
+
+      let token: string | null = null;
       if (nextUser) {
         try {
-          const token = await nextUser.getIdToken();
+          token = await nextUser.getIdToken();
           setIdToken(token);
         } catch {
           setIdToken(null);
@@ -169,6 +182,49 @@ export default function App() {
 
       if (nextUser) {
         try {
+          // One-time promotion of the temp/guest workspace (chats, saved
+          // explorations, notes and API credentials) into this account.
+          if (!hasMigratedGuestData(nextUser.uid)) {
+            const guestThreads = loadGuestThreads();
+            const guestSaved = loadGuestSaved();
+            const guestNotes = loadGuestNotesMap();
+            const hasGuestData =
+              guestThreads.length > 0 || guestSaved.length > 0 || Object.keys(guestNotes).length > 0;
+
+            try {
+              // Credentials first — the server reads the guest cookies, so this
+              // must happen before anything clears them.
+              if (token) {
+                await fetch('/api/account/migrate-credentials', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ idToken: token }),
+                }).catch(() => undefined);
+              }
+
+              if (hasGuestData) {
+                const result = await migrateGuestDataToAccount(
+                  nextUser.uid,
+                  guestThreads,
+                  guestSaved,
+                  guestNotes
+                );
+                const parts: string[] = [];
+                if (result.conversations) parts.push(`${result.conversations} chats`);
+                if (result.saved) parts.push(`${result.saved} saved`);
+                if (result.notes) parts.push(`${result.notes} notes`);
+                if (parts.length) {
+                  setMigrationNote(`moved your temp workspace to your account: ${parts.join(', ')}`);
+                }
+              }
+              markGuestDataMigrated(nextUser.uid);
+              clearGuestData();
+            } catch (err) {
+              console.error('Failed to migrate guest workspace:', err);
+              setAuthError('Signed in, but could not move your temporary chats. They are still on this device.');
+            }
+          }
+
           await syncUserProfileOnLogin(nextUser, {
             theme,
             preferredDepth: depth,
@@ -182,10 +238,12 @@ export default function App() {
           ]);
           setThreads(cloudConvs);
           setSavedItems(cloudSaved);
+          setNotesMap({});
           setActiveThreadId((prevId) => {
             if (prevId && cloudConvs.some((c) => c.id === prevId)) return prevId;
             return null;
           });
+          void refreshGeminiStatus(token);
         } catch (err) {
           console.error('Failed to sync cloud workspace:', err);
           setAuthError('Signed in, but could not load cloud history. Check network connection.');
@@ -762,6 +820,8 @@ export default function App() {
             onSignOut={handleSignOut}
             onDeleteAllData={handleDeleteAllData}
             authError={authError}
+            migrationNote={migrationNote}
+            idToken={idToken}
             composerInputRef={composerInputRef}
             loadingThreadTurns={loadingThreadTurns}
           />

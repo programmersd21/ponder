@@ -127,3 +127,27 @@ export function saveGuestNotesMap(notes: Record<string, string>): void {
     // Ignore
   }
 }
+
+const MIGRATION_MARKER_PREFIX = 'ponder_migrated_';
+
+export function hasMigratedGuestData(uid: string): boolean {
+  try {
+    return localStorage.getItem(`${MIGRATION_MARKER_PREFIX}${uid}`) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function markGuestDataMigrated(uid: string): void {
+  try {
+    localStorage.setItem(`${MIGRATION_MARKER_PREFIX}${uid}`, '1');
+  } catch {
+    // Ignore
+  }
+}
+
+export function clearGuestData(): void {
+  clearGuestThreads();
+  saveGuestSaved([]);
+  saveGuestNotesMap({});
+}
